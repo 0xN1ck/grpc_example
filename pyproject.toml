@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "grpc-example"
+version = "0.1.0"
+description = "The project is for demonstration a technology of gRPC on Python"
+authors = ["0xN1ck <alex97ander97@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.7.2"
+grpcio = "^1.64.0"
+grpcio-tools = "^1.64.0"
+fastapi = "^0.111.0"
+loguru = "^0.7.2"
+pydantic-settings = "^2.2.1"
+piccolo = {extras = ["sqlite"], version = "^1.7.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

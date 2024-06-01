@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package order;
+
+enum OrderNotificationTypeEnum {
+    ORDER_NOTIFICATION_TYPE_ENUM_UNSPECIFIED = 0;
+    ORDER_NOTIFICATION_TYPE_ENUM_OK = 1;
+}
+
+message Order {
+    string uuid = 1;
+    string name = 2;
+    bool completed = 3;
+    string date = 4;
+}
+
+message CreateOrderRequest {
+    string name = 1;
+    bool completed = 2;
+    string date = 3;
+}
+
+message CreateOrderResponse {
+    OrderNotificationTypeEnum notification_type = 1;
+    Order order = 2;
+}
+
+message ReadOrderRequest {
+    string uuid = 1;
+}
+
+message ReadOrderResponse {
+    OrderNotificationTypeEnum notification_type = 1;
+    Order order = 2;
+}
+
+message UpdateOrderRequest {
+    string uuid = 1;
+    string name = 2;
+    bool completed = 3;
+    string date = 4;
+}
+
+message UpdateOrderResponse {
+    OrderNotificationTypeEnum notification_type = 1;
+    Order order = 2;
+}
+
+message DeleteOrderRequest {
+    string uuid = 1;
+}
+
+message DeleteOrderResponse {
+    OrderNotificationTypeEnum notification_type = 1;
+    bool success = 2;
+}
+
+message ListOrdersRequest {}
+
+message ListOrdersResponse {
+    OrderNotificationTypeEnum notification_type = 1;
+    repeated Order orders = 2;
+}
+
+
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc ReadOrder(ReadOrderRequest) returns (ReadOrderResponse);
+  rpc UpdateOrder(UpdateOrderRequest) returns (UpdateOrderResponse);
+  rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+}
