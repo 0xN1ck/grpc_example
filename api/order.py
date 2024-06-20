@@ -1,7 +1,9 @@
 import typing as t
-from datetime import datetime
+import jwt
+from datetime import datetime, timedelta
 from loguru import logger
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import JSONResponse
 
 from grpc.aio import AioRpcError
@@ -9,13 +11,28 @@ from google.protobuf.json_format import MessageToDict
 
 from grpc_core.protos.order import order_pb2
 from grpc_core.clients.order import grpc_order_client
-
+from grpc_core.servers.schemas.order import OrderListResponse, OrderReadResponse, OrderDeleteResponse
+from settings import settings
 
 router = APIRouter(prefix='/order', tags=['Order'])
+api_key_header = APIKeyHeader(name="rpc-auth")
+
+
+@router.get("/get_token")
+async def get_token() -> JSONResponse:
+    payload = {
+        "username": "0xN1ck",
+        "exp": datetime.utcnow() + timedelta(days=1)
+    }
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    return JSONResponse({'rpc-auth': f'{token}'}, status_code=status.HTTP_200_OK)
 
 
 @router.get("")
-async def list_orders(client: t.Any = Depends(grpc_order_client)) -> JSONResponse:
+async def list_orders(
+        key: str = Security(api_key_header),
+        client: t.Any = Depends(grpc_order_client)
+) -> JSONResponse:
     """
     Получает список заказов через gRPC сервис OrderService.
 
@@ -42,13 +59,14 @@ async def list_orders(client: t.Any = Depends(grpc_order_client)) -> JSONRespons
     except AioRpcError as e:
         raise HTTPException(status_code=404, detail=e.details())
 
-    return JSONResponse(MessageToDict(orders))
+    return JSONResponse(OrderListResponse(**MessageToDict(orders)).dict())
 
 
 @router.get("/{uuid:str}")
 async def single_order(
         uuid: str,
         client: t.Any = Depends(grpc_order_client),
+        key: str = Security(api_key_header),
 ) -> JSONResponse:
     """
     Получает данные одного заказа по UUID через gRPC сервис OrderService.
@@ -78,7 +96,7 @@ async def single_order(
     except AioRpcError as e:
         raise HTTPException(status_code=404, detail=e.details())
 
-    return JSONResponse(MessageToDict(order))
+    return JSONResponse(OrderReadResponse(**MessageToDict(order)).dict())
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -87,6 +105,7 @@ async def create_order(
         completed: bool,
         date: str = f'{datetime.utcnow()}Z',
         client: t.Any = Depends(grpc_order_client),
+        key: str = Security(api_key_header),
 ) -> JSONResponse:
     """
     Создает новый заказ через gRPC сервис OrderService.
@@ -137,6 +156,7 @@ async def update_order(
         completed: bool,
         date: str = f'{datetime.utcnow()}Z',
         client: t.Any = Depends(grpc_order_client),
+        key: str = Security(api_key_header),
 ) -> JSONResponse:
     """
    Обновляет существующий заказ по UUID через gRPC сервис OrderService.
@@ -179,13 +199,14 @@ async def update_order(
     except AioRpcError as e:
         raise HTTPException(status_code=404, detail=e.details())
 
-    return JSONResponse(MessageToDict(order))
+    return JSONResponse(OrderReadResponse(**MessageToDict(order)).dict())
 
 
 @router.delete("/{uuid:str}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
-    uuid: str,
-    client: t.Any = Depends(grpc_order_client)
+        uuid: str,
+        client: t.Any = Depends(grpc_order_client),
+        key: str = Security(api_key_header),
 ) -> JSONResponse:
     """
     Удаляет заказ по UUID через gRPC сервис OrderService.
@@ -215,4 +236,4 @@ async def delete_order(
     except AioRpcError as e:
         raise HTTPException(status_code=404, detail=e.details())
 
-    return JSONResponse(MessageToDict(order))
+    return JSONResponse(OrderDeleteResponse(**MessageToDict(order)).dict())
