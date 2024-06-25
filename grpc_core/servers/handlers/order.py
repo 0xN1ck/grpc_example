@@ -52,9 +52,15 @@ class OrderHandler:
 
     @staticmethod
     async def delete_order(request):
-        order = await Order.delete().where(Order.uuid == request.uuid)
-        logger.success(f'Delete order: {order}')
-        response = OrderDeleteResponse(
-            success=True
-        )
-        return response
+        if (order := await Order.select().where(Order.uuid == request.uuid).first()):
+            await Order.delete().where(Order.uuid == request.uuid)
+            logger.success(f'Delete order: {order}')
+            response = OrderDeleteResponse(
+                success=True
+            )
+            return response
+        else:
+            response = OrderDeleteResponse(
+                success=False
+            )
+            return response

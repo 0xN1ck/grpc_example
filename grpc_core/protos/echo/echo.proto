@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package echo;
+
+message EchoMessage {
+	string username = 1;
+	string message = 2;
+}
+
+message DelayedReply {
+	repeated EchoMessage response = 1;
+}
+
+service EchoService {
+	// Client Streaming
+	rpc ClientStream (stream EchoMessage) returns (DelayedReply);
+
+	// Server Streaming
+	rpc ServerStream (EchoMessage) returns (stream EchoMessage);
+
+	// Both Streaming
+	rpc BothStream (stream EchoMessage) returns (stream EchoMessage);
+}

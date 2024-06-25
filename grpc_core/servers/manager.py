@@ -1,11 +1,26 @@
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from grpc import aio
+from grpc_reflection.v1alpha import reflection
+from grpc_health.v1 import health_pb2
+from grpc_health.v1 import health_pb2_grpc
+
+from opentelemetry import trace
+from opentelemetry.instrumentation.grpc import GrpcAioInstrumentorServer, GrpcAioInstrumentorClient
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.jaeger.proto.grpc import JaegerExporter
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.trace.status import Status, StatusCode
 
 from grpc_core.protos.order import order_pb2
 from grpc_core.protos.order import order_pb2_grpc
+from grpc_core.protos.echo import echo_pb2
+from grpc_core.protos.echo import echo_pb2_grpc
+from grpc_core.servers.interceptors import AuthInterceptor
 from grpc_core.servers.schemas.order import OrderCreateRequest, OrderReadRequest, OrderUpdateRequest
 from grpc_core.servers.handlers.order import OrderHandler
 
@@ -22,7 +37,7 @@ class GrpcParseMessage:
             request,
             preserving_proto_field_name=True,
             use_integers_for_enums=False,
-            always_print_fields_with_no_presence=True
+            # always_print_fields_with_no_presence=True
         )
 
     @staticmethod
@@ -100,18 +115,24 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
         -----------
         Может выбрасывать исключения в случае ошибок при обработке запроса.
         """
-        request = OrderCreateRequest(**self.message.rpc_to_dict(request))
-        logger.info(f'Получен запрос на создание заказа: {request}')
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("CreateOrder") as span:
+            request = OrderCreateRequest(**self.message.rpc_to_dict(request))
+            logger.info(f'Получен запрос на создание заказа: {request}')
 
-        result = await OrderHandler.create_order(
-            request=request
-        )
+            result = await OrderHandler.create_order(
+                request=request
+            )
 
-        response = self.message.dict_to_rpc(
-            data=result.dict(),
-            request_message=order_pb2.CreateOrderResponse(),
-        )
-        return response
+            response = self.message.dict_to_rpc(
+                data=result.dict(),
+                request_message=order_pb2.CreateOrderResponse(),
+            )
+
+            span.set_attribute("rpc.grpc.status_code", "OK")
+            span.add_event("Successful response", {"response": str(response)})
+
+            return response
 
     async def ListOrders(self, request, context) -> order_pb2.ListOrdersResponse:
         """
@@ -139,15 +160,26 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
         -----------
         Может выбрасывать исключения в случае ошибок при обработке запроса.
         """
-        logger.info(f'Получен запрос на получение списка заказов')
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("CreateOrder") as span:
+            try:
+                logger.info(f'Получен запрос на получение списка заказов')
 
-        result = await OrderHandler.list_orders()
+                result = await OrderHandler.list_orders()
 
-        response = self.message.dict_to_rpc(
-            data=result.dict(),
-            request_message=order_pb2.ListOrdersResponse(),
-        )
-        return response
+                response = self.message.dict_to_rpc(
+                    data=result.dict(),
+                    request_message=order_pb2.ListOrdersResponse(),
+                )
+
+                span.set_attribute("rpc.grpc.status_code", "OK")
+                span.add_event("Successful response", {"response": str(response)})
+
+                return response
+
+            except Exception as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
+                span.add_event("Error response", {"error": str(e)})
 
     async def ReadOrder(self, request, context) -> order_pb2.ReadOrderResponse:
         """
@@ -176,18 +208,24 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
         -----------
         Может выбрасывать исключения в случае ошибок при обработке запроса.
         """
-        logger.info(f'Получен запрос на чтение заказа: {request}')
-        request = OrderReadRequest(**self.message.rpc_to_dict(request))
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("CreateOrder") as span:
+            logger.info(f'Получен запрос на чтение заказа: {request}')
+            request = OrderReadRequest(**self.message.rpc_to_dict(request))
 
-        result = await OrderHandler.read_order(
-            request=request
-        )
+            result = await OrderHandler.read_order(
+                request=request
+            )
 
-        response = self.message.dict_to_rpc(
-            data=result.dict(),
-            request_message=order_pb2.ReadOrderResponse(),
-        )
-        return response
+            response = self.message.dict_to_rpc(
+                data=result.dict(),
+                request_message=order_pb2.ReadOrderResponse(),
+            )
+
+            span.set_attribute("rpc.grpc.status_code", "OK")
+            span.add_event("Successful response", {"response": str(response)})
+
+            return response
 
     async def UpdateOrder(self, request, context) -> order_pb2.UpdateOrderResponse:
         """
@@ -216,18 +254,24 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
         -----------
         Может выбрасывать исключения в случае ошибок при обработке запроса.
         """
-        logger.info(f'Получен запрос на обновление заказа: {request}')
-        request = OrderUpdateRequest(**self.message.rpc_to_dict(request))
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("CreateOrder") as span:
+            logger.info(f'Получен запрос на обновление заказа: {request}')
+            request = OrderUpdateRequest(**self.message.rpc_to_dict(request))
 
-        result = await OrderHandler.update_order(
-            request=request
-        )
+            result = await OrderHandler.update_order(
+                request=request
+            )
 
-        response = self.message.dict_to_rpc(
-            data=result.dict(),
-            request_message=order_pb2.UpdateOrderResponse(),
-        )
-        return response
+            response = self.message.dict_to_rpc(
+                data=result.dict(),
+                request_message=order_pb2.UpdateOrderResponse(),
+            )
+
+            span.set_attribute("rpc.grpc.status_code", "OK")
+            span.add_event("Successful response", {"response": str(response)})
+
+            return response
 
     async def DeleteOrder(self, request, context) -> order_pb2.DeleteOrderResponse:
         """
@@ -256,18 +300,65 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
         -----------
         Может выбрасывать исключения в случае ошибок при обработке запроса.
         """
-        logger.info(f'Получен запрос на удаление заказа: {request}')
-        request = OrderReadRequest(**self.message.rpc_to_dict(request))
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("CreateOrder") as span:
+            logger.info(f'Получен запрос на удаление заказа: {request}')
+            request = OrderReadRequest(**self.message.rpc_to_dict(request))
 
-        result = await OrderHandler.delete_order(
-            request=request
+            result = await OrderHandler.delete_order(
+                request=request
+            )
+
+            response = self.message.dict_to_rpc(
+                data=result.dict(),
+                request_message=order_pb2.DeleteOrderResponse(),
+            )
+
+            span.set_attribute("rpc.grpc.status_code", "OK")
+            span.add_event("Successful response", {"response": str(response)})
+
+            return response
+
+
+class HealthService(health_pb2_grpc.HealthServicer):
+    async def Check(self, request, context):
+        return health_pb2.HealthCheckResponse(
+            status=health_pb2.HealthCheckResponse.SERVING
         )
 
-        response = self.message.dict_to_rpc(
-            data=result.dict(),
-            request_message=order_pb2.DeleteOrderResponse(),
-        )
+    async def Watch(self, request, context):
+        while True:
+            current_status = health_pb2.HealthCheckResponse.SERVING
+            response = health_pb2.HealthCheckResponse(status=current_status)
+            yield response
+            await asyncio.sleep(1)
+
+
+class EchoService(echo_pb2_grpc.EchoServiceServicer):
+    def __init__(self):
+        self.message = GrpcParseMessage()
+
+    async def ClientStream(self, request_iterator, context) -> echo_pb2.DelayedReply:
+        response = echo_pb2.DelayedReply()
+        async for request in request_iterator:
+            logger.info(f'Приняли запрос от стрим клиента: {self.message.rpc_to_dict(request)}')
+            response.response.append(request)
         return response
+
+    async def ServerStream(self, request, context):
+        logger.info(f'Приняли запрос от клиента: {self.message.rpc_to_dict(request)}')
+        for _ in range(5):
+            yield request
+            logger.info(f'Ответил стрим сервер: {self.message.rpc_to_dict(request)}')
+            await asyncio.sleep(3)
+
+    async def BothStream(self, request_iterator, context):
+        async for request in request_iterator:
+            logger.info(f'Приняли запрос от стрима клиента: {self.message.rpc_to_dict(request)}')
+            for i in range(5):
+                yield request
+                logger.info(f'Ответил стрим сервер: {self.message.rpc_to_dict(request)}')
+                await asyncio.sleep(1)
 
 
 class Server:
@@ -319,9 +410,37 @@ class Server:
         Устанавливает адрес сервера, создает сервер gRPC и добавляет незащищенный порт.
         """
         if not hasattr(self, 'initialized'):
+            jaeger_exporter = JaegerExporter(
+                collector_endpoint=f'{settings.JAEGER_HOST}:{settings.JAEGER_PORT}',
+                insecure=True
+            )
+            span_processor = BatchSpanProcessor(jaeger_exporter)
+            trace.set_tracer_provider(
+                TracerProvider(resource=Resource.create({SERVICE_NAME: "Order"}))
+            )
+            trace.get_tracer_provider().add_span_processor(span_processor)
+            grpc_server_instrumentor = GrpcAioInstrumentorServer()
+            grpc_server_instrumentor.instrument()
+            grpc_client_instrumentor = GrpcAioInstrumentorClient()
+            grpc_client_instrumentor.instrument()
+
             self.SERVER_ADDRESS = f'{settings.GRPC_HOST_LOCAL}:{settings.GRPC_PORT}'
-            self.server = aio.server(ThreadPoolExecutor(max_workers=10))
+            self.server = aio.server(
+                ThreadPoolExecutor(max_workers=10),
+                interceptors=[
+                    AuthInterceptor(settings.SECRET_KEY),
+                ]
+            )
             self.server.add_insecure_port(self.SERVER_ADDRESS)
+
+            SERVICE_NAMES = (
+                order_pb2.DESCRIPTOR.services_by_name["OrderService"].full_name,
+                echo_pb2.DESCRIPTOR.services_by_name["EchoService"].full_name,
+                health_pb2.DESCRIPTOR.services_by_name["Health"].full_name,
+                reflection.SERVICE_NAME,
+            )
+            reflection.enable_server_reflection(SERVICE_NAMES, self.server)
+
             self.initialized = True
 
     def register(self) -> None:
@@ -333,6 +452,10 @@ class Server:
         order_pb2_grpc.add_OrderServiceServicer_to_server(
             OrderService(), self.server
         )
+        echo_pb2_grpc.add_EchoServiceServicer_to_server(
+            EchoService(), self.server
+        )
+        health_pb2_grpc.add_HealthServicer_to_server(HealthService(), self.server)
 
     async def run(self) -> None:
         """
@@ -352,7 +475,7 @@ class Server:
         Останавливает сервер.
 
         Останавливает gRPC сервер без периода ожидания (grace period).
-        Логгирует информацию о остановке сервера.
+        Логгирует информацию об остановке сервера.
         """
         logger.info('*** Сервис gRPC остановлен ***')
         await self.server.stop(grace=False)

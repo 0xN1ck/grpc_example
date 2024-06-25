@@ -12,7 +12,7 @@ class OrderNotificationEnum(Enum):
 class OrderResponse(BaseModel):
     uuid: str
     name: str = None
-    completed: bool = None
+    completed: bool = False
     date: str = None
 
 
@@ -28,7 +28,7 @@ class OrderListResponse(BaseModel):
 class OrderCreateRequest(BaseModel):
     uuid: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    completed: bool
+    completed: bool = False
     date: str
 
 
@@ -49,7 +49,7 @@ class OrderReadResponse(BaseModel):
 class OrderUpdateRequest(BaseModel):
     uuid: str
     name: str
-    completed: bool
+    completed: bool = False
     date: str
     
     
@@ -59,4 +59,4 @@ class OrderDeleteRequest(BaseModel):
 
 class OrderDeleteResponse(BaseModel):
     notification_type: str = OrderNotificationEnum.ORDER_NOTIFICATION_TYPE_ENUM_OK.value
-    success: bool
+    success: bool = False

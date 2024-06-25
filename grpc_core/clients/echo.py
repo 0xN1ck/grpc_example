@@ -1,11 +1,11 @@
 import grpc
-from fastapi import Request
-from grpc_core.protos.order import order_pb2_grpc
+# from fastapi import Request
+from grpc_core.protos.echo import echo_pb2_grpc
 from grpc_core.servers.interceptors import KeyAuthClientInterceptor
 from settings import settings
 
 
-async def grpc_order_client(request: Request):
+async def grpc_echo_client(request):  # request: Request
     """
     Создает асинхронный gRPC клиент для сервиса OrderService.
 
@@ -24,5 +24,5 @@ async def grpc_order_client(request: Request):
             KeyAuthClientInterceptor(auth),
         ],
     )
-    client = order_pb2_grpc.OrderServiceStub(channel)
+    client = echo_pb2_grpc.EchoServiceStub(channel)
     return client
