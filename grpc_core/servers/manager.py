@@ -1,9 +1,12 @@
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from grpc import aio
 from grpc_reflection.v1alpha import reflection
+from grpc_health.v1 import health_pb2
+from grpc_health.v1 import health_pb2_grpc
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import GrpcAioInstrumentorServer, GrpcAioInstrumentorClient
@@ -15,6 +18,8 @@ from opentelemetry.trace.status import Status, StatusCode
 
 from grpc_core.protos.order import order_pb2
 from grpc_core.protos.order import order_pb2_grpc
+from grpc_core.protos.echo import echo_pb2
+from grpc_core.protos.echo import echo_pb2_grpc
 from grpc_core.servers.interceptors import AuthInterceptor
 from grpc_core.servers.schemas.order import OrderCreateRequest, OrderReadRequest, OrderUpdateRequest
 from grpc_core.servers.handlers.order import OrderHandler
@@ -315,6 +320,47 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
             return response
 
 
+class HealthService(health_pb2_grpc.HealthServicer):
+    async def Check(self, request, context):
+        return health_pb2.HealthCheckResponse(
+            status=health_pb2.HealthCheckResponse.SERVING
+        )
+
+    async def Watch(self, request, context):
+        while True:
+            current_status = health_pb2.HealthCheckResponse.SERVING
+            response = health_pb2.HealthCheckResponse(status=current_status)
+            yield response
+            await asyncio.sleep(1)
+
+
+class EchoService(echo_pb2_grpc.EchoServiceServicer):
+    def __init__(self):
+        self.message = GrpcParseMessage()
+
+    async def ClientStream(self, request_iterator, context) -> echo_pb2.DelayedReply:
+        response = echo_pb2.DelayedReply()
+        async for request in request_iterator:
+            logger.info(f'Приняли запрос от стрим клиента: {self.message.rpc_to_dict(request)}')
+            response.response.append(request)
+        return response
+
+    async def ServerStream(self, request, context):
+        logger.info(f'Приняли запрос от клиента: {self.message.rpc_to_dict(request)}')
+        for _ in range(5):
+            yield request
+            logger.info(f'Ответил стрим сервер: {self.message.rpc_to_dict(request)}')
+            await asyncio.sleep(3)
+
+    async def BothStream(self, request_iterator, context):
+        async for request in request_iterator:
+            logger.info(f'Приняли запрос от стрима клиента: {self.message.rpc_to_dict(request)}')
+            for i in range(5):
+                yield request
+                logger.info(f'Ответил стрим сервер: {self.message.rpc_to_dict(request)}')
+                await asyncio.sleep(1)
+
+
 class Server:
     """
     Singleton класс для настройки и запуска gRPC сервера.
@@ -389,6 +435,8 @@ class Server:
 
             SERVICE_NAMES = (
                 order_pb2.DESCRIPTOR.services_by_name["OrderService"].full_name,
+                echo_pb2.DESCRIPTOR.services_by_name["EchoService"].full_name,
+                health_pb2.DESCRIPTOR.services_by_name["Health"].full_name,
                 reflection.SERVICE_NAME,
             )
             reflection.enable_server_reflection(SERVICE_NAMES, self.server)
@@ -404,6 +452,10 @@ class Server:
         order_pb2_grpc.add_OrderServiceServicer_to_server(
             OrderService(), self.server
         )
+        echo_pb2_grpc.add_EchoServiceServicer_to_server(
+            EchoService(), self.server
+        )
+        health_pb2_grpc.add_HealthServicer_to_server(HealthService(), self.server)
 
     async def run(self) -> None:
         """
@@ -423,7 +475,7 @@ class Server:
         Останавливает сервер.
 
         Останавливает gRPC сервер без периода ожидания (grace period).
-        Логгирует информацию о остановке сервера.
+        Логгирует информацию об остановке сервера.
         """
         logger.info('*** Сервис gRPC остановлен ***')
         await self.server.stop(grace=False)
