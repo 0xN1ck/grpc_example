@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package order;
 
+import "check/check.proto";
+
 enum OrderNotificationTypeEnum {
     ORDER_NOTIFICATION_TYPE_ENUM_UNSPECIFIED = 0;
     ORDER_NOTIFICATION_TYPE_ENUM_OK = 1;
@@ -70,4 +72,6 @@ service OrderService {
   rpc UpdateOrder(UpdateOrderRequest) returns (UpdateOrderResponse);
   rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse);
   rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+
+  rpc CheckStatusOrder(check.CheckStatusOrderRequest) returns (check.CheckStatusOrderResponse);
 }

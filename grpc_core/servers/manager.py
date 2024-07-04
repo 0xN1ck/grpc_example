@@ -1,8 +1,10 @@
 import asyncio
+import random
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 
 from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.wrappers_pb2 import BoolValue
 from grpc import aio
 from grpc_reflection.v1alpha import reflection
 from grpc_health.v1 import health_pb2
@@ -16,6 +18,7 @@ from opentelemetry.exporter.jaeger.proto.grpc import JaegerExporter
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.trace.status import Status, StatusCode
 
+from grpc_core.protos.check import check_pb2_grpc, check_pb2
 from grpc_core.protos.order import order_pb2
 from grpc_core.protos.order import order_pb2_grpc
 from grpc_core.protos.echo import echo_pb2
@@ -23,6 +26,7 @@ from grpc_core.protos.echo import echo_pb2_grpc
 from grpc_core.servers.interceptors import AuthInterceptor
 from grpc_core.servers.schemas.order import OrderCreateRequest, OrderReadRequest, OrderUpdateRequest
 from grpc_core.servers.handlers.order import OrderHandler
+from grpc_core.clients.check import grpc_check_client
 
 from models.order import Order
 from settings import settings
@@ -319,6 +323,18 @@ class OrderService(order_pb2_grpc.OrderServiceServicer):
 
             return response
 
+    async def CheckStatusOrder(self, request, context):
+        metadata = context.invocation_metadata()
+        auth = None
+        for key, value in metadata:
+            if key == 'rpc-auth':
+                auth = value
+        client = await grpc_check_client(auth=auth)
+        response = await client.CheckStatusOrder(
+            check_pb2.CheckStatusOrderRequest(uuid=request.uuid)
+        )
+        return response
+
 
 class HealthService(health_pb2_grpc.HealthServicer):
     async def Check(self, request, context):
@@ -359,6 +375,16 @@ class EchoService(echo_pb2_grpc.EchoServiceServicer):
                 yield request
                 logger.info(f'Ответил стрим сервер: {self.message.rpc_to_dict(request)}')
                 await asyncio.sleep(1)
+
+
+class CheckStatusOrderService(check_pb2_grpc.CheckStatusOrderServiceServicer):
+    async def CheckStatusOrder(self, request, context):
+        uuid = request.uuid
+        response = check_pb2.CheckStatusOrderResponse(
+            uuid=uuid,
+            status=BoolValue(value=random.choice([True, False])),
+        )
+        return response
 
 
 class Server:
@@ -455,7 +481,10 @@ class Server:
         echo_pb2_grpc.add_EchoServiceServicer_to_server(
             EchoService(), self.server
         )
-        health_pb2_grpc.add_HealthServicer_to_server(HealthService(), self.server)
+        health_pb2_grpc.add_HealthServicer_to_server(HealthService(), self.server),
+        check_pb2_grpc.add_CheckStatusOrderServiceServicer_to_server(
+            CheckStatusOrderService(), self.server
+        )
 
     async def run(self) -> None:
         """
