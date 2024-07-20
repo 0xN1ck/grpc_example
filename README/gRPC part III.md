@@ -434,13 +434,7 @@ class EchoService(echo_pb2_grpc.EchoServiceServicer):
 ```
 
 Как видим, для эхо-сервера настройка streaming-методов *ClientStream*, *ServerStream* и *BothStream* была совсем
-не сложной. Давайте посмотрим, как это все будет выглядеть в приложении Postman.
-
-*ClientStream*
-![Streaming client](../screenshots/streaming_client.gif)
-
-*ServerStream*
-![Streaming server](../screenshots/streaming_server.gif)
+не сложной. Давайте посмотрим, как это все будет выглядеть в приложении Postman на примере *BothStream*.
 
 *BothStream*
 ![Streaming both](../screenshots/streaming_both.gif)
