@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package check;
+
+import "google/protobuf/wrappers.proto";
+
+message CheckStatusOrderRequest {
+	string uuid = 1;
+}
+
+message CheckStatusOrderResponse {
+	string uuid = 1;
+	google.protobuf.BoolValue completed = 2;
+}
+
+service CheckStatusOrderService {
+	rpc CheckStatusOrder (CheckStatusOrderRequest) returns (CheckStatusOrderResponse);
+}

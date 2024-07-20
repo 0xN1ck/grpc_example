@@ -11,18 +11,6 @@ services:
       - LOG_LEVEL=debug
     networks:
       - jaeger-example
-  hotrod:
-    image: jaegertracing/example-hotrod:${JAEGER_VERSION:-latest}
-    ports:
-      - "8080:8080"
-      - "8083:8083"
-    command: ["all"]
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-    networks:
-      - jaeger-example
-    depends_on:
-      - jaeger
 
 networks:
   jaeger-example:

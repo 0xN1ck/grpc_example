@@ -1,3 +1,5 @@
+import datetime
+
 from loguru import logger
 
 from models.order import Order
@@ -64,3 +66,18 @@ class OrderHandler:
                 success=False
             )
             return response
+
+    @staticmethod
+    async def update_after_check_order(request):
+        await Order.update(
+            {
+                Order.completed: request.completed.value,
+                Order.date: f"{datetime.datetime.utcnow()}Z"
+            }
+        ).where(Order.uuid == request.uuid)
+        order = await Order.select().where(Order.uuid == request.uuid).first()
+        logger.success(f'Update order: {order}')
+        response = OrderReadResponse(
+            order=OrderResponse(**order)
+        )
+        return response
