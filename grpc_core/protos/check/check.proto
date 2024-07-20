@@ -10,7 +10,7 @@ message CheckStatusOrderRequest {
 
 message CheckStatusOrderResponse {
 	string uuid = 1;
-	google.protobuf.BoolValue status = 2;
+	google.protobuf.BoolValue completed = 2;
 }
 
 service CheckStatusOrderService {

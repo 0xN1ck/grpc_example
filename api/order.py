@@ -11,6 +11,7 @@ from google.protobuf.json_format import MessageToDict
 
 from grpc_core.protos.order import order_pb2
 from grpc_core.clients.order import grpc_order_client
+from grpc_core.protos.check import check_pb2
 from grpc_core.servers.schemas.order import OrderListResponse, OrderReadResponse, OrderDeleteResponse
 from settings import settings
 
@@ -237,3 +238,18 @@ async def delete_order(
         raise HTTPException(status_code=404, detail=e.details())
 
     return JSONResponse(OrderDeleteResponse(**MessageToDict(order)).dict())
+
+
+@router.post("/check")
+async def check_order_status(
+        uuid: str,
+        client: t.Any = Depends(grpc_order_client),
+        key: str = Security(api_key_header),
+) -> JSONResponse:
+    try:
+        # устанавливаем тайм-аут в 2 секунды, определяя за сколько времени должна будет отработать вся цепочка вызовов
+        order = await client.CheckStatusOrder(check_pb2.CheckStatusOrderRequest(uuid=uuid), timeout=2)
+    except AioRpcError as e:
+        raise HTTPException(status_code=404, detail=e.details())
+
+    return JSONResponse(MessageToDict(order))

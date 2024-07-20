@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import wrappers_pb2 as google_dot_protobuf_dot_wrappers__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x63heck/check.proto\x12\x05\x63heck\x1a\x1egoogle/protobuf/wrappers.proto\"\'\n\x17\x43heckStatusOrderRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"T\n\x18\x43heckStatusOrderResponse\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12*\n\x06status\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.BoolValue2n\n\x17\x43heckStatusOrderService\x12S\n\x10\x43heckStatusOrder\x12\x1e.check.CheckStatusOrderRequest\x1a\x1f.check.CheckStatusOrderResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x63heck/check.proto\x12\x05\x63heck\x1a\x1egoogle/protobuf/wrappers.proto\"\'\n\x17\x43heckStatusOrderRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"W\n\x18\x43heckStatusOrderResponse\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12-\n\tcompleted\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.BoolValue2n\n\x17\x43heckStatusOrderService\x12S\n\x10\x43heckStatusOrder\x12\x1e.check.CheckStatusOrderRequest\x1a\x1f.check.CheckStatusOrderResponseb\x06proto3')
 
 
 
@@ -42,7 +42,7 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _CHECKSTATUSORDERREQUEST._serialized_start=60
   _CHECKSTATUSORDERREQUEST._serialized_end=99
   _CHECKSTATUSORDERRESPONSE._serialized_start=101
-  _CHECKSTATUSORDERRESPONSE._serialized_end=185
-  _CHECKSTATUSORDERSERVICE._serialized_start=187
-  _CHECKSTATUSORDERSERVICE._serialized_end=297
+  _CHECKSTATUSORDERRESPONSE._serialized_end=188
+  _CHECKSTATUSORDERSERVICE._serialized_start=190
+  _CHECKSTATUSORDERSERVICE._serialized_end=300
 # @@protoc_insertion_point(module_scope)
